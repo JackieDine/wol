@@ -17,14 +17,22 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true   // 开启代码混淆
-            isShrinkResources = true // 开启资源缩减
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
 dependencies {
-    // 仅保留最基础的核心库，删除 Material 和 ConstraintLayout 以减小体积
     implementation("androidx.appcompat:appcompat:1.6.1")
 }

@@ -1,50 +1,62 @@
-package com.example.qqwebview
+package com.jack.web
 
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
-import android.webkit.WebResourceRequest
+import android.view.View
+import android.view.WindowManager
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-
-    private lateinit var webView: WebView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        webView = findViewById(R.id.webview)
+        // 启用沉浸式状态栏
+        setupImmersiveStatusBar()
+
+        val webView: WebView = findViewById(R.id.webview)
         
-        // 配置 WebView 设置
+        // WebView 配置
         webView.settings.apply {
-            javaScriptEnabled = true // 启用 JS
-            domStorageEnabled = true // 启用 DOM 存储
-            loadWithOverviewMode = true
+            javaScriptEnabled = true
+            domStorageEnabled = true
             useWideViewPort = true
+            loadWithOverviewMode = true
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
-        // 关键：设置 WebViewClient，防止点击链接跳出 APP
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false // 返回 false 表示由 WebView 处理 URL
-            }
-        }
-
-        // 加载 QQ
+        webView.webViewClient = WebViewClient()
         webView.loadUrl("https://www.qq.com")
+    }
 
-        // 处理返回键逻辑（网页后退）
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                }
+    private fun setupImmersiveStatusBar() {
+        window.apply {
+            clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            statusBarColor = Color.TRANSPARENT
+            
+            // 设置状态栏文字颜色（Android 6.0+ 为深色，适配浅色网页）
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                decorView.systemUiVisibility = 
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            } else {
+                decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
             }
-        })
+        }
+    }
+
+    override fun onBackPressed() {
+        val webView: WebView = findViewById(R.id.webview)
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
+        }
     }
 }

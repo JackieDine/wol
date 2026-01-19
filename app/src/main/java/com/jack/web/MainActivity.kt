@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 目标网址
-        webView.loadUrl("https://quik-page.github.io/")
+        webView.loadUrl("https://quik-page.github.io/quik2/")
     }
 
     private fun setupTransparentStatusBar() {

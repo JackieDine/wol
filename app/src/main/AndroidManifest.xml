@@ -7,24 +7,16 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Quick Page"
         android:supportsRtl="true"
-        
-        /* 核心修复：允许 HTTP 明文传输，解决 net::ERR_CLEARTEXT_NOT_PERMITTED */
         android:usesCleartextTraffic="true"
-        
-        /* 开启硬件加速，提升网页视频播放性能 */
         android:hardwareAccelerated="true"
-        
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            /* 核心修复：防止横屏全屏播放视频时 Activity 销毁重构导致网页重刷 */
             android:configChanges="orientation|screenLayout|screenSize|keyboardHidden|smallestScreenSize|uiMode"
-            /* 允许应用覆盖在刘海屏区域，实现真正全屏 */
             android:windowSoftInputMode="adjustResize">
             
             <intent-filter>

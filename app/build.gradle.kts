@@ -4,11 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.qqwebview"
+    // 更改此处 namespace
+    namespace = "com.jack.web"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.qqwebview"
+        // 更改此处 applicationId
+        applicationId = "com.jack.web"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

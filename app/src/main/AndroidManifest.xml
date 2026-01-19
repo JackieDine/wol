@@ -5,15 +5,15 @@
 
     <application
         android:allowBackup="true"
-        android:label="QQ Portal"
+        android:label="Quick Page"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden">
-            <intent-filter>
+            android:configChanges="orientation|screenLayout|screenSize|keyboardHidden|smallestScreenSize"
+            android:hardwareAccelerated="true"> <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>

@@ -37,5 +37,5 @@ android {
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
-implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0") // 添加这一行
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0") // 添加这一行
 }

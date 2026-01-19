@@ -1,0 +1,8 @@
+name: Generate Key
+on: workflow_dispatch
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - run: keytool -genkeypair -v -keystore my.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-alias -storepass 123456 -keypass 123456 -dname "CN=Me" -storetype pkcs12
+      - run: base64 -w 0 my.jks

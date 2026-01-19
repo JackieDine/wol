@@ -2,9 +2,10 @@ name: Android Build CI
 
 on:
   push:
-    branches: [ "main" ] # 当代码推送到 main 分支时触发
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: # 允许你手动点击按钮触发构建
 
 jobs:
   build:
@@ -19,19 +20,18 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: 'gradle' # 开启缓存，让下次构建更快
 
-    # 1. 自动配置指定版本的 Gradle，避免版本不兼容
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: 8.5
 
-    # 2. 执行 Release 编译（生成未签名的 APK）
+    # 执行 Release 编译（生成混淆后的未签名 APK）
     - name: Build Release APK
-      run: gradle assembleRelease --no-daemon
+      run: ./gradlew assembleRelease --no-daemon
 
-    # 3. 使用 r0adkll/sign-android-release 进行自动化签名
-    # 此步骤会从 Secrets 读取 Base64 字符串并还原为 keystore 文件进行签名
+    # 使用新生成的 JKS 证书进行签名
     - name: Sign APK
       uses: r0adkll/sign-android-release@v1
       id: sign_app
@@ -44,10 +44,17 @@ jobs:
       env:
         BUILD_TOOLS_VERSION: "34.0.0"
 
-    # 4. 将签名后的 APK 上传到 GitHub Actions Artifacts
+    # 上传最终的签名版 APK
     - name: Upload Signed APK
       uses: actions/upload-artifact@v4
       with:
-        name: QQ-WebView-Signed-Final
-        # 使用签名插件输出的特定路径
+        name: QQ-Portal-Signed-Final
+        # 使用 sign_app 步骤自动寻找并输出的签名后文件路径
         path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+
+    # (可选) 同时上传混淆映射表，方便以后分析报错代码
+    - name: Upload Mapping
+      uses: actions/upload-artifact@v4
+      with:
+        name: mapping-files
+        path: app/build/outputs/mapping/release/mapping.txt

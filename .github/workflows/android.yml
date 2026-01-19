@@ -2,7 +2,7 @@ name: Android Build CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ] # 当代码推送到 main 分支时触发
   pull_request:
     branches: [ "main" ]
 
@@ -20,18 +20,34 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # 使用此步骤自动下载并配置指定版本的 Gradle
+    # 1. 自动配置指定版本的 Gradle，避免版本不兼容
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
       with:
-        gradle-version: 8.5 # 强制使用 8.5 版本，与 AGP 8.2.0 兼容
+        gradle-version: 8.5
 
-    - name: Build with Gradle
-      # 直接运行 gradle 命令，由于上面指定了版本，这里会使用 8.5
-      run: gradle assembleDebug --no-daemon
+    # 2. 执行 Release 编译（生成未签名的 APK）
+    - name: Build Release APK
+      run: gradle assembleRelease --no-daemon
 
-    - name: Upload APK
+    # 3. 使用 r0adkll/sign-android-release 进行自动化签名
+    # 此步骤会从 Secrets 读取 Base64 字符串并还原为 keystore 文件进行签名
+    - name: Sign APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
+      with:
+        releaseDirectory: app/build/outputs/apk/release
+        signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+        alias: ${{ secrets.ALIAS }}
+        keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+        keyPassword: ${{ secrets.KEY_PASSWORD }}
+      env:
+        BUILD_TOOLS_VERSION: "34.0.0"
+
+    # 4. 将签名后的 APK 上传到 GitHub Actions Artifacts
+    - name: Upload Signed APK
       uses: actions/upload-artifact@v4
       with:
-        name: qq-webview-app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: QQ-WebView-Signed-Final
+        # 使用签名插件输出的特定路径
+        path: ${{ steps.sign_app.outputs.signedReleaseFile }}

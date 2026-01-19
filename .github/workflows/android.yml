@@ -48,7 +48,7 @@ jobs:
     - name: Upload Signed APK
       uses: actions/upload-artifact@v4
       with:
-        name: QQ-Portal-Signed-Final
+        name: app-Signed-Final
         # 使用 sign_app 步骤自动寻找并输出的签名后文件路径
         path: ${{ steps.sign_app.outputs.signedReleaseFile }}
 

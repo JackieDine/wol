@@ -1,15 +1,16 @@
 package com.jack.web
 
 import android.content.Context
-import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
-import android.webkit.*
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.EditText
-import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -21,8 +22,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var homeButton: FloatingActionButton
     
-    // 默认主页
-    private var homeUrl: String = "https://quik-page.github.io/"
+    // 默认备选地址
+    private var homeUrl: String? = null
+    private val DEFAULT_URL = "https://quik-page.github.io/"
     private val PREFS_NAME = "WebPrefs"
     private val KEY_HOME_URL = "home_url"
 
@@ -30,19 +32,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 读取保存的主页地址
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        homeUrl = prefs.getString(KEY_HOME_URL, homeUrl) ?: homeUrl
-
         setupTransparentStatusBar()
 
         webView = findViewById(R.id.webview)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         homeButton = findViewById(R.id.homeButton)
 
+        // WebView 设置
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            allowFileAccess = true // 允许访问本地 assets
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
@@ -52,39 +52,68 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 短按：回到主页
-        homeButton.setOnClickListener {
-            webView.loadUrl(homeUrl)
+        // 1. 读取保存的主页
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        homeUrl = prefs.getString(KEY_HOME_URL, null)
+
+        // 2. 首次启动逻辑判断
+        if (homeUrl == null) {
+            // 如果从未设置过，加载内置教程页
+            webView.loadUrl("file:///android_asset/guide.html")
+        } else {
+            // 如果已设置，直接加载主页
+            webView.loadUrl(homeUrl!!)
         }
 
-        // 长按逻辑（系统默认长按较快，我们手动实现长按逻辑或使用默认长按）
+        // 3. 悬浮按钮点击逻辑
+        homeButton.setOnClickListener {
+            val currentHome = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_HOME_URL, null)
+            
+            if (currentHome == null) {
+                // 如果在教程页点击，提示长按
+                Toast.makeText(this, "请长按此按钮设置您的首页", Toast.LENGTH_SHORT).show()
+                webView.loadUrl("file:///android_asset/guide.html")
+            } else {
+                webView.loadUrl(currentHome)
+            }
+        }
+
+        // 4. 悬浮按钮长按逻辑
         homeButton.setOnLongClickListener {
             showChangeHomeDialog()
             true
         }
 
         swipeRefreshLayout.setOnRefreshListener { webView.reload() }
-        
-        webView.loadUrl(homeUrl)
     }
 
-    // 弹出更改主页的对话框
     private fun showChangeHomeDialog() {
+        val currentPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val currentUrl = currentPrefs.getString(KEY_HOME_URL, DEFAULT_URL)
+
         val editText = EditText(this)
-        editText.setText(homeUrl)
-        
+        editText.setText(currentUrl)
+        editText.setHint("例如: baidu.com")
+        editText.setPadding(60, 40, 60, 40)
+
         AlertDialog.Builder(this)
-            .setTitle("更改主页地址")
+            .setTitle("设置您的主页")
+            .setMessage("输入网址后点击保存，此后轻触按钮即可返回该页面。")
             .setView(editText)
-            .setPositiveButton("保存") { _, _ ->
+            .setPositiveButton("保存并跳转") { _, _ ->
                 var newUrl = editText.text.toString().trim()
                 if (newUrl.isNotEmpty()) {
-                    if (!newUrl.startsWith("http")) newUrl = "https://$newUrl"
-                    homeUrl = newUrl
+                    if (!newUrl.startsWith("http")) {
+                        newUrl = "https://$newUrl"
+                    }
                     // 持久化保存
                     getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                        .edit().putString(KEY_HOME_URL, homeUrl).apply()
-                    webView.loadUrl(homeUrl)
+                        .edit().putString(KEY_HOME_URL, newUrl).apply()
+                    
+                    homeUrl = newUrl
+                    webView.loadUrl(newUrl)
+                    Toast.makeText(this, "主页设置成功！", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("取消", null)
@@ -103,6 +132,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 }

@@ -1,43 +1,48 @@
 package com.jack.web
 
+import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
-import android.webkit.WebChromeClient
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
+import android.widget.EditText
 import android.widget.FrameLayout
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
-    private var customView: View? = null
-    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private lateinit var homeButton: FloatingActionButton
+    
+    // 默认主页
+    private var homeUrl: String = "https://quik-page.github.io/"
+    private val PREFS_NAME = "WebPrefs"
+    private val KEY_HOME_URL = "home_url"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 初始化竖屏沉浸式状态栏
+        // 读取保存的主页地址
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        homeUrl = prefs.getString(KEY_HOME_URL, homeUrl) ?: homeUrl
+
         setupTransparentStatusBar()
 
         webView = findViewById(R.id.webview)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
+        homeButton = findViewById(R.id.homeButton)
 
-        // WebView 基础配置
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            mediaPlaybackRequiresUserGesture = false
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
@@ -47,59 +52,43 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 处理全屏视频的核心逻辑
-        webView.webChromeClient = object : WebChromeClient() {
-            
-            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (customView != null) {
-                    onHideCustomView()
-                    return
+        // 短按：回到主页
+        homeButton.setOnClickListener {
+            webView.loadUrl(homeUrl)
+        }
+
+        // 长按逻辑（系统默认长按较快，我们手动实现长按逻辑或使用默认长按）
+        homeButton.setOnLongClickListener {
+            showChangeHomeDialog()
+            true
+        }
+
+        swipeRefreshLayout.setOnRefreshListener { webView.reload() }
+        
+        webView.loadUrl(homeUrl)
+    }
+
+    // 弹出更改主页的对话框
+    private fun showChangeHomeDialog() {
+        val editText = EditText(this)
+        editText.setText(homeUrl)
+        
+        AlertDialog.Builder(this)
+            .setTitle("更改主页地址")
+            .setView(editText)
+            .setPositiveButton("保存") { _, _ ->
+                var newUrl = editText.text.toString().trim()
+                if (newUrl.isNotEmpty()) {
+                    if (!newUrl.startsWith("http")) newUrl = "https://$newUrl"
+                    homeUrl = newUrl
+                    // 持久化保存
+                    getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit().putString(KEY_HOME_URL, homeUrl).apply()
+                    webView.loadUrl(homeUrl)
                 }
-                customView = view
-                customViewCallback = callback
-                
-                // 1. 强制设为横屏
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                
-                // 2. 彻底隐藏系统 UI (状态栏和导航栏)
-                window.decorView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                )
-
-                // 3. 将视频 View 添加到 DecorView，并隐藏主布局以取消 fitsSystemWindows 的影响
-                val decor = window.decorView as FrameLayout
-                decor.addView(customView, FrameLayout.LayoutParams(-1, -1))
-                swipeRefreshLayout.visibility = View.GONE
             }
-
-            override fun onHideCustomView() {
-                val decor = window.decorView as FrameLayout
-                decor.removeView(customView)
-                customView = null
-                customViewCallback?.onCustomViewHidden()
-                
-                // 1. 恢复竖屏
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                
-                // 2. 恢复竖屏沉浸式 UI
-                setupTransparentStatusBar()
-                
-                // 3. 重新显示主布局
-                swipeRefreshLayout.visibility = View.VISIBLE
-            }
-        }
-
-        swipeRefreshLayout.setOnRefreshListener {
-            webView.reload()
-        }
-
-        // 目标网址
-        webView.loadUrl("https://quik-page.github.io/quik2/")
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun setupTransparentStatusBar() {
@@ -107,25 +96,13 @@ class MainActivity : AppCompatActivity() {
             clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
             addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
             statusBarColor = Color.TRANSPARENT
-            
-            // 恢复 UI 标志 (竖屏状态)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN 
-                        or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
-            } else {
-                decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
             }
         }
     }
 
     override fun onBackPressed() {
-        if (customView != null) {
-            webView.webChromeClient?.onHideCustomView()
-        } else if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            @Suppress("DEPRECATION")
-            super.onBackPressed()
-        }
+        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
 }

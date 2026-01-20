@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
-        android:src="@android:drawable/ic_dialog_map"
+        android:src="@android:drawable/icon.png"
         android:contentDescription="Home"
         app:fabSize="normal"
         app:backgroundTint="#FFFFFF" />

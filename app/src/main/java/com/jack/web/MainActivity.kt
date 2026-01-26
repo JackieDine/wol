@@ -88,37 +88,38 @@ class MainActivity : AppCompatActivity() {
         swipeRefreshLayout.setOnRefreshListener { webView.reload() }
     }
 
-    private fun showChangeHomeDialog() {
-        val currentPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val currentUrl = currentPrefs.getString(KEY_HOME_URL, DEFAULT_URL)
+   private fun showChangeHomeDialog() {
+    // 使用 MaterialAlertDialogBuilder 而非传统的 AlertDialog
+    val editText = EditText(this)
+    editText.setText(homeUrl ?: DEFAULT_URL)
+    
+    // M3 风格的输入框容器（增加边距）
+    val container = android.widget.FrameLayout(this)
+    val params = android.widget.FrameLayout.LayoutParams(
+        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+        android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+    )
+    params.setMargins(64, 20, 64, 0) // M3 需要更宽的边距
+    editText.layoutParams = params
+    container.addView(editText)
 
-        val editText = EditText(this)
-        editText.setText(currentUrl)
-        editText.setHint("例如: baidu.com")
-        editText.setPadding(60, 40, 60, 40)
-
-        AlertDialog.Builder(this)
-            .setTitle("设置您的主页")
-            .setMessage("输入网址后点击保存，此后轻触按钮即可返回该页面。")
-            .setView(editText)
-            .setPositiveButton("保存并跳转") { _, _ ->
-                var newUrl = editText.text.toString().trim()
-                if (newUrl.isNotEmpty()) {
-                    if (!newUrl.startsWith("http")) {
-                        newUrl = "https://$newUrl"
-                    }
-                    // 持久化保存
-                    getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                        .edit().putString(KEY_HOME_URL, newUrl).apply()
-                    
-                    homeUrl = newUrl
-                    webView.loadUrl(newUrl)
-                    Toast.makeText(this, "主页设置成功！", Toast.LENGTH_SHORT).show()
-                }
+    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle("更改主页")
+        .setMessage("请输入新的起始网址")
+        .setView(container)
+        .setPositiveButton("保存") { _, _ ->
+            val newUrl = editText.text.toString().trim()
+            if (newUrl.isNotEmpty()) {
+                val formattedUrl = if (newUrl.startsWith("http")) newUrl else "https://$newUrl"
+                getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit().putString(KEY_HOME_URL, formattedUrl).apply()
+                homeUrl = formattedUrl
+                webView.loadUrl(formattedUrl)
             }
-            .setNegativeButton("取消", null)
-            .show()
-    }
+        }
+        .setNegativeButton("取消", null)
+        .show()
+}
 
     private fun setupTransparentStatusBar() {
         window.apply {

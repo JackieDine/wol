@@ -1,9 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.WebQuickPage" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">#0061A4</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSurface">#FBFCFF</item>
-        <item name="colorOnSurface">#191C1E</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

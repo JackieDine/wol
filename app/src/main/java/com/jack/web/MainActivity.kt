@@ -110,16 +110,23 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun setupTransparentStatusBar() {
-        window.apply {
-            clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            statusBarColor = Color.TRANSPARENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            }
-        }
+   private fun setupTransparentStatusBar() {
+    window.apply {
+        // 1. 允许内容延伸到状态栏
+        WindowCompat.setDecorFitsSystemWindows(this, false)
+        
+        // 2. 设置状态栏为透明
+        statusBarColor = Color.TRANSPARENT
+        
+        // 3. 自动适配状态栏图标颜色 (Material 3 标准方式)
+        val controller = WindowInsetsControllerCompat(this, decorView)
+        // 获取当前是否为深色模式，如果不是，则启用深色图标
+        val isNightMode = (resources.configuration.uiMode and 
+                          android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
+                          android.content.res.Configuration.UI_MODE_NIGHT_YES
+        controller.isAppearanceLightStatusBars = !isNightMode
     }
+}
 
     override fun onBackPressed() {
         if (webView.canGoBack()) webView.goBack() else super.onBackPressed()

@@ -10,10 +10,11 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
@@ -22,14 +23,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var homeButton: FloatingActionButton
     
-    // 默认备选地址
-    private var homeUrl: String? = null
-    private val DEFAULT_URL = "https://quik-page.github.io/"
     private val PREFS_NAME = "WebPrefs"
     private val KEY_HOME_URL = "home_url"
+    private var homeUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 确保在 setContentView 之前没有任何导致崩溃的逻辑
         setContentView(R.layout.activity_main)
 
         setupTransparentStatusBar()
@@ -38,13 +38,17 @@ class MainActivity : AppCompatActivity() {
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         homeButton = findViewById(R.id.homeButton)
 
-        // WebView 设置
+        // 核心配置
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            allowFileAccess = true // 允许访问本地 assets
+            allowFileAccess = true 
+            databaseEnabled = true
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
+
+        // 开启嵌套滚动以支持 M3 按钮滑动隐藏
+        webView.isNestedScrollingEnabled = true
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -52,74 +56,59 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 1. 读取保存的主页
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         homeUrl = prefs.getString(KEY_HOME_URL, null)
 
-        // 2. 首次启动逻辑判断
         if (homeUrl == null) {
-            // 如果从未设置过，加载内置教程页
             webView.loadUrl("file:///android_asset/guide.html")
         } else {
-            // 如果已设置，直接加载主页
             webView.loadUrl(homeUrl!!)
         }
 
-        // 3. 悬浮按钮点击逻辑
         homeButton.setOnClickListener {
-            val currentHome = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(KEY_HOME_URL, null)
-            
+            val currentHome = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(KEY_HOME_URL, null)
             if (currentHome == null) {
-                // 如果在教程页点击，提示长按
-                Toast.makeText(this, "请长按此按钮设置您的首页", Toast.LENGTH_SHORT).show()
-                webView.loadUrl("file:///android_asset/guide.html")
+                Toast.makeText(this, "长按按钮设置主页", Toast.LENGTH_SHORT).show()
             } else {
                 webView.loadUrl(currentHome)
             }
         }
 
-        // 4. 悬浮按钮长按逻辑
         homeButton.setOnLongClickListener {
-            showChangeHomeDialog()
+            showM3Dialog()
             true
         }
 
         swipeRefreshLayout.setOnRefreshListener { webView.reload() }
     }
 
-   private fun showChangeHomeDialog() {
-    // 使用 MaterialAlertDialogBuilder 而非传统的 AlertDialog
-    val editText = EditText(this)
-    editText.setText(homeUrl ?: DEFAULT_URL)
-    
-    // M3 风格的输入框容器（增加边距）
-    val container = android.widget.FrameLayout(this)
-    val params = android.widget.FrameLayout.LayoutParams(
-        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-        android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-    )
-    params.setMargins(64, 20, 64, 0) // M3 需要更宽的边距
-    editText.layoutParams = params
-    container.addView(editText)
+    private fun showM3Dialog() {
+        val editText = EditText(this)
+        editText.setText(homeUrl ?: "")
+        editText.hint = "https://www.google.com"
+        
+        // M3 对话框边距处理
+        val container = FrameLayout(this)
+        val params = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT)
+        params.setMargins(48, 24, 48, 0)
+        editText.layoutParams = params
+        container.addView(editText)
 
-    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-        .setTitle("更改主页")
-        .setMessage("请输入新的起始网址")
-        .setView(container)
-        .setPositiveButton("保存") { _, _ ->
-            val newUrl = editText.text.toString().trim()
-            if (newUrl.isNotEmpty()) {
-                val formattedUrl = if (newUrl.startsWith("http")) newUrl else "https://$newUrl"
-                getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit().putString(KEY_HOME_URL, formattedUrl).apply()
-                homeUrl = formattedUrl
-                webView.loadUrl(formattedUrl)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("设置主页")
+            .setView(container)
+            .setPositiveButton("保存") { _, _ ->
+                var url = editText.text.toString().trim()
+                if (url.isNotEmpty()) {
+                    if (!url.startsWith("http")) url = "https://$url"
+                    getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(KEY_HOME_URL, url).apply()
+                    homeUrl = url
+                    webView.loadUrl(url)
+                }
             }
-        }
-        .setNegativeButton("取消", null)
-        .show()
-}
+            .setNegativeButton("取消", null)
+            .show()
+    }
 
     private fun setupTransparentStatusBar() {
         window.apply {
@@ -133,10 +122,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
-        }
+        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
 }
